@@ -11,25 +11,27 @@ https://docs.djangoproject.com/en/1.11/ref/settings/
 """
 
 import os
+import sys
+import datetime
+
+# print(sys.path)
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
-# 由于Django的用户模型类配置只能为users.user系列,故需要修改系统path
-import sys
-
+# BASE_DIR
+# 把apps路径添加到系统包路径中
 sys.path.insert(0, os.path.join(BASE_DIR, 'apps'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'vjc=bnu7v1s31icx^vpx=awo_+bdt&=@y7z$$l3y6!unm8p7dg'
+SECRET_KEY = 'u1_92$a!hlj0lv)!e9%4)zrr7i8ybfw1cg99b)=b2f14n131l+'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 
@@ -40,15 +42,22 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # 注册 DRF
+    # 注册DRF子应用
     'rest_framework',
+    # 注册CORS
+    'corsheaders',
 
-    # 注册users相关信息
     # 'meiduo_mall.apps.users.apps.UsersConfig',
-    'users.apps.UsersConfig'
+    'users.apps.UsersConfig',
+    'verifications.apps.VerificationsConfig',
+    # 注册 oauth
+    'oauth.apps.OauthConfig'
 ]
 
 MIDDLEWARE = [
+    # CORS
+    'corsheaders.middleware.CorsMiddleware',
+
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -81,12 +90,6 @@ WSGI_APPLICATION = 'meiduo_mall.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-#     }
-# }
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -119,6 +122,10 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/1.11/topics/i18n/
 
+# LANGUAGE_CODE = 'en-us'
+#
+# TIME_ZONE = 'UTC'
+
 LANGUAGE_CODE = 'zh-hans'
 
 TIME_ZONE = 'Asia/Shanghai'
@@ -134,7 +141,7 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-# 配置缓存caches
+# 配置缓存
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -149,12 +156,20 @@ CACHES = {
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
+    },
+    'verifications': {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/2",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
     }
 }
+# session保存到缓存当中
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
+# 指明session保存的session这个redis库中
 SESSION_CACHE_ALIAS = "session"
 
-# 配置日志
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,  # 是否禁用已经存在的日志器
@@ -196,11 +211,42 @@ LOGGING = {
     }
 }
 
-# DRF 相关配置
+# DRF配置
 REST_FRAMEWORK = {
     # 异常处理
     'EXCEPTION_HANDLER': 'meiduo_mall.utils.exceptions.exception_handler',
+    # 认证方式
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        # 'rest_framework_jwt.authentication.JSONWebTokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
+    ),
+}
+JWT_AUTH = {
+    # token过期时间
+    'JWT_EXPIRATION_DELTA': datetime.timedelta(days=1),
+    'JWT_RESPONSE_PAYLOAD_HANDLER': 'users.utils.jwt_response_payload_handler',
 }
 
 # 配置自定义认证模型类
 AUTH_USER_MODEL = 'users.User'
+# 配置自定义认证后端
+AUTHENTICATION_BACKENDS = [
+    'users.utils.UsernameMobileAuthBackend',
+]
+# CORS
+CORS_ORIGIN_WHITELIST = (
+    '127.0.0.1:8080',
+    'localhost:8080',
+    'www.meiduo.site:8080',
+    'www.meiduo.site:8000'
+    'api.meiduo.site:8000'
+)
+
+CORS_ALLOW_CREDENTIALS = True  # 允许携带cookie
+
+
+# QQ登录参数
+QQ_CLIENT_ID = '101474184' # appid
+QQ_CLIENT_SECRET = 'c6ce949e04e12ecc909ae6a8b09b637c' # appkey
+QQ_REDIRECT_URI = 'http://www.meiduo.site:8080/oauth_callback.html' # 回调地址

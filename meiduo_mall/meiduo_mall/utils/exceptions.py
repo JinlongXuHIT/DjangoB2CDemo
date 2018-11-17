@@ -21,4 +21,5 @@ def exception_handler(exc,context):
         if isinstance(exc,DatabaseError) or isinstance(exc,RedisError):
 
             return Response({'error':'服务器内部错误'},status=507)
-    return Response
+    # return Response
+    return response
